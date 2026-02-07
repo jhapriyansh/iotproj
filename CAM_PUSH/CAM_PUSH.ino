@@ -8,8 +8,8 @@
 #include "camera_pins.h"
 
 // ===== CONFIG =====
-const char* ssid = "Pixel_4477";
-const char* password = "4rs3gdfznnvncmt";
+const char* ssid = "WiFi_SSID";
+const char* password = "WiFi_PassKey";
 #define SERVER_URL "http://blind-assist.local:8000/upload"
 #define BUTTON_PIN 13
 // ==================
