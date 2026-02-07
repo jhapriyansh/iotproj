@@ -4,47 +4,48 @@ import os
 
 client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
-SAFETY_PROMPT = """
-You are assisting a blind person.
+PROMPT = """
+You are assisting a blind person with navigation.
 
-Describe the scene clearly and calmly.
+Describe only what directly affects safe movement in front of the camera.
 Focus on:
 - obstacles or hazards
-- people and their positions
-- clear pathways
-- objects that may block movement
+- people or moving objects
+- doors or entrances, and always state their position if visible
+- whether the path ahead is clear or blocked
 
-Use relative positions like left, right, center, near, far.
-Do not guess. Do not speculate.
-If something is unclear, say it is unclear.
-Keep it concise and practical.
+Use short sentences.
+Use clear directions like left, right, center, near, far.
+Do not guess or assume.
+Do not describe colors.
+
+Limit the response to 2–3 short sentences.
 """
 
-def encode_image(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
 
-def describe_image(image_path: str) -> str:
-    base64_image = encode_image(image_path)
+def encode_image(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
-    completion = client.chat.completions.create(
+def describe_image(path):
+    img = encode_image(path)
+
+    res = client.chat.completions.create(
         model="meta-llama/llama-4-scout-17b-16e-instruct",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": SAFETY_PROMPT},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
-                        }
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": PROMPT},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{img}"
                     }
-                ]
-            }
-        ],
+                }
+            ]
+        }],
         temperature=0.2,
-        max_completion_tokens=400,
+        max_completion_tokens=100,  # hard cap to prevent rambling
     )
 
-    return completion.choices[0].message.content
+    return res.choices[0].message.content.strip()

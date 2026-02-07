@@ -6,6 +6,7 @@ from describe import describe_image
 from tts import speak
 
 app = FastAPI()
+
 SAVE_DIR = "received_images"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -15,27 +16,19 @@ async def upload_image(request: Request):
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = f"esp32_{timestamp}.jpg"
-    filepath = os.path.join(SAVE_DIR, filename)
+    path = os.path.join(SAVE_DIR, filename)
 
-    with open(filepath, "wb") as f:
+    with open(path, "wb") as f:
         f.write(data)
 
-    print(f"💾 Image saved: {filepath}")
+    print(f"📷 Saved: {path}")
 
     try:
-        description = describe_image(filepath)
-        print("\n🧠 DESCRIPTION:")
-        print(description)
-
-        # 🔊 SPEAK IT
+        description = describe_image(path)
+        print("🧠", description)
         speak(description)
-
     except Exception as e:
-        print("❌ Error:", e)
+        print("❌ Vision/TTS error:", e)
         description = None
 
-    return {
-        "status": "saved",
-        "file": filename,
-        "description": description,
-    }
+    return {"status": "ok", "file": filename}
