@@ -1,0 +1,168 @@
+{% extends "base.html" %} {% set active = "dashboard" %} {% block title
+%}Gallery – Blind Assist{% endblock %} {% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold">Photo Gallery</h1>
+  <p class="text-gray-400 text-sm mt-1">
+    Photos captured by {{ user.blind_name }}'s device
+  </p>
+</div>
+
+{% if images|length == 0 %}
+<div id="empty-state" class="text-center text-gray-500 py-20">
+  <p class="text-lg">No photos yet.</p>
+  <p class="text-sm mt-1">
+    Images will appear here once the ESP32-CAM captures them.
+  </p>
+</div>
+<div
+  id="grid"
+  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden"
+></div>
+{% else %}
+<div id="empty-state" class="text-center text-gray-500 py-20 hidden">
+  <p class="text-lg">No photos yet.</p>
+</div>
+<div
+  id="grid"
+  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+>
+  {% for img in images %}
+  <div
+    class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden cursor-pointer hover:border-indigo-500 transition group"
+    onclick="openModal('{{ img.filename }}', `{{ img.description or 'No description available' }}`, '{{ img.timestamp.strftime('%b %d, %Y  %I:%M:%S %p') }}')"
+  >
+    <div class="aspect-video bg-gray-800 overflow-hidden">
+      <img
+        src="/images/{{ img.filename }}"
+        alt="Capture"
+        class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+        loading="lazy"
+      />
+    </div>
+    <div class="p-3">
+      <p class="text-sm text-gray-300 line-clamp-2">
+        {{ img.description or 'No description' }}
+      </p>
+      <p class="text-xs text-gray-500 mt-1">
+        {{ img.timestamp.strftime('%b %d, %Y %I:%M:%S %p') }}
+      </p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Modal -->
+<div
+  id="modal"
+  class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+  onclick="closeModal(event)"
+>
+  <div
+    class="bg-gray-900 border border-gray-700 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto shadow-2xl"
+    onclick="event.stopPropagation()"
+  >
+    <div class="relative">
+      <img id="modal-img" src="" alt="Capture" class="w-full rounded-t-2xl" />
+      <button
+        onclick="closeModal()"
+        class="absolute top-3 right-3 bg-gray-900/70 hover:bg-gray-800 rounded-full w-8 h-8 flex items-center justify-center text-gray-300"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="p-5">
+      <p id="modal-desc" class="text-gray-200 leading-relaxed"></p>
+      <p id="modal-time" class="text-xs text-gray-500 mt-3"></p>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  function openModal(filename, desc, time) {
+    document.getElementById("modal-img").src = "/images/" + filename;
+    document.getElementById("modal-desc").textContent = desc;
+    document.getElementById("modal-time").textContent = "Captured: " + time;
+    const modal = document.getElementById("modal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== document.getElementById("modal")) return;
+    const modal = document.getElementById("modal");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  // Also close if called without event (✕ button)
+  document
+    .getElementById("modal")
+    .querySelector("button")
+    .addEventListener("click", function () {
+      const modal = document.getElementById("modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      const modal = document.getElementById("modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+  });
+
+  // ── Real-time SSE updates ──
+  function makeCard(filename, desc, time) {
+    const d = desc || "No description";
+    const card = document.createElement("div");
+    card.className =
+      "bg-gray-900 border border-gray-800 rounded-xl overflow-hidden cursor-pointer hover:border-indigo-500 transition group";
+    card.dataset.filename = filename;
+    card.onclick = function () {
+      openModal(filename, desc || "No description available", time);
+    };
+    card.innerHTML = `
+      <div class="aspect-video bg-gray-800 overflow-hidden">
+        <img src="/images/${filename}" alt="Capture"
+             class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
+      </div>
+      <div class="p-3">
+        <p class="text-sm text-gray-300 line-clamp-2 desc-text">${d}</p>
+        <p class="text-xs text-gray-500 mt-1">${time}</p>
+      </div>`;
+    return card;
+  }
+
+  const es = new EventSource("/events");
+
+  es.addEventListener("new_image", function (e) {
+    const data = JSON.parse(e.data);
+    const grid = document.getElementById("grid");
+    const empty = document.getElementById("empty-state");
+    empty.classList.add("hidden");
+    grid.classList.remove("hidden");
+    grid.insertBefore(
+      makeCard(data.filename, data.description, data.timestamp),
+      grid.firstChild,
+    );
+  });
+
+  es.addEventListener("image_described", function (e) {
+    const data = JSON.parse(e.data);
+    const card = document.querySelector(`[data-filename="${data.filename}"]`);
+    if (card) {
+      const descEl = card.querySelector(".desc-text");
+      if (descEl) descEl.textContent = data.description || "No description";
+      card.onclick = function () {
+        openModal(
+          data.filename,
+          data.description || "No description available",
+          card.querySelector(".text-xs").textContent,
+        );
+      };
+    }
+  });
+</script>
+{% endblock %}

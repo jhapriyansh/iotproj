@@ -1,0 +1,89 @@
+{% extends "base.html" %} {% set active = "collisions" %} {% block title
+%}Collisions – Blind Assist{% endblock %} {% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold">Collision Alerts</h1>
+  <p class="text-gray-400 text-sm mt-1">
+    Proximity warnings from {{ user.blind_name }}'s device (≤ 5 cm)
+  </p>
+</div>
+
+{% if collisions|length == 0 %}
+<div id="empty-state" class="text-center text-gray-500 py-20">
+  <p class="text-lg">No collision events recorded.</p>
+  <p class="text-sm mt-1">
+    Alerts appear here when the ultrasonic sensor detects an obstacle within 5
+    cm.
+  </p>
+</div>
+<div id="collision-list" class="space-y-3 max-w-2xl hidden"></div>
+{% else %}
+<div id="empty-state" class="text-center text-gray-500 py-20 hidden">
+  <p class="text-lg">No collision events recorded.</p>
+</div>
+<div id="collision-list" class="space-y-3 max-w-2xl">
+  {% for c in collisions %}
+  <div
+    class="bg-gray-900 border border-red-900/40 rounded-xl px-5 py-4 flex items-center gap-4"
+  >
+    <div
+      class="flex-shrink-0 w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center"
+    >
+      <svg
+        class="w-5 h-5 text-red-400"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 9v2m0 4h.01M12 3l9.09 16.36A1 1 0 0120.09 21H3.91a1 1 0 01-.91-1.64L12 3z"
+        />
+      </svg>
+    </div>
+    <div class="flex-1">
+      <p class="text-sm text-red-300 font-medium">
+        Obstacle detected at {{ c.distance }} cm
+      </p>
+      <p class="text-xs text-gray-500 mt-0.5">
+        {{ c.timestamp.strftime('%b %d, %Y %I:%M:%S %p') }}
+      </p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %} {% endblock %} {% block scripts %}
+<script>
+  function makeCollisionCard(distance, time) {
+    const el = document.createElement("div");
+    el.className =
+      "bg-gray-900 border border-red-900/40 rounded-xl px-5 py-4 flex items-center gap-4 animate-pulse-once";
+    el.innerHTML = `
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center">
+        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M12 3l9.09 16.36A1 1 0 0120.09 21H3.91a1 1 0 01-.91-1.64L12 3z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <p class="text-sm text-red-300 font-medium">Obstacle detected at ${distance} cm</p>
+        <p class="text-xs text-gray-500 mt-0.5">${time}</p>
+      </div>`;
+    return el;
+  }
+
+  const es = new EventSource("/events");
+
+  es.addEventListener("new_collision", function (e) {
+    const data = JSON.parse(e.data);
+    const list = document.getElementById("collision-list");
+    const empty = document.getElementById("empty-state");
+    empty.classList.add("hidden");
+    list.classList.remove("hidden");
+    list.insertBefore(
+      makeCollisionCard(data.distance, data.timestamp),
+      list.firstChild,
+    );
+  });
+</script>
+{% endblock %}

@@ -75,6 +75,10 @@ A FastAPI-based server that receives images from the ESP32-CAM, processes them u
 
 4. **Run:**
    - Start the server.
+   ```bash
+   uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
    - Power on ESP32-CAM to begin image capture and transmission.
 
 The system will capture image at button press, send them to the server for AI-powered description, and provide audio guidance to assist with navigation.

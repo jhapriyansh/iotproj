@@ -1,3 +1,9 @@
 fastapi
 uvicorn
 groq
+python-dotenv
+pymongo
+bcrypt
+PyJWT
+jinja2
+python-multipart

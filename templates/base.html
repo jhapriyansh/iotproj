@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Blind Assist{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col">
+    {% if user %}
+    <nav
+      class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between"
+    >
+      <a href="/dashboard" class="text-lg font-bold text-indigo-400"
+        >Blind&nbsp;Assist</a
+      >
+      <div class="flex items-center gap-6 text-sm">
+        <a
+          href="/dashboard"
+          class="hover:text-indigo-400 {% if active == 'dashboard' %}text-indigo-400{% endif %}"
+          >Gallery</a
+        >
+        <a
+          href="/collisions"
+          class="hover:text-red-400 {% if active == 'collisions' %}text-red-400{% endif %}"
+          >Collisions</a
+        >
+        <span class="text-gray-500">{{ user.guardian_name }}</span>
+        <a href="/logout" class="text-gray-400 hover:text-white">Logout</a>
+      </div>
+    </nav>
+    {% endif %}
+
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
