@@ -8,10 +8,10 @@
 #include "camera_pins.h"
 
 // ===== CONFIG =====
-const char *ssid = "Pixel_4477";
-const char *password = "4rs3gdfznnvncmt";
-#define SERVER_URL "http://blind-assist.local:8000/upload"
-#define COLLISION_URL "http://blind-assist.local:8000/collision"
+const char *ssid = "trex";
+const char *password = "pkj1554vitc*@";
+#define SERVER_URL "http://trex.local:8000/upload"
+#define COLLISION_URL "http://trex.local:8000/collision"
 
 // Pin assignments (free GPIOs on AI-Thinker: 2, 12, 13, 14, 15)
 #define BUTTON_PIN 15
@@ -71,7 +71,7 @@ void setup()
 
   config.xclk_freq_hz = 20000000;
 
-  config.pixel_format = PIXFORMAT_RGB565;
+  config.pixel_format = PIXFORMAT_JPEG;
   config.frame_size = FRAMESIZE_VGA;
   config.fb_count = 1;
   config.fb_location = CAMERA_FB_IN_PSRAM;
