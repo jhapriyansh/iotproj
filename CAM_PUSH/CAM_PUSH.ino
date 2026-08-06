@@ -4,14 +4,17 @@
 #include <ESPmDNS.h>
 #include "img_converters.h"
 
+#define FLASH_PIN 4
+#define BRIGHTNESS_THRESHOLD 60 // 0–255 scale; tune this after testing
+
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
 // ===== CONFIG =====
 const char *ssid = "trex";
 const char *password = "pkj1554vitc*@";
-#define SERVER_URL "http://trex.local:8000/upload"
-#define COLLISION_URL "http://trex.local:8000/collision"
+#define SERVER_URL "http://192.168.0.100:8080/upload"
+#define COLLISION_URL "http://192.168.0.100:8080/collision"
 
 // Pin assignments (free GPIOs on AI-Thinker: 2, 12, 13, 14, 15)
 #define BUTTON_PIN 15
@@ -47,6 +50,10 @@ void setup()
   // OFF initially (active-LOW peripherals)
   digitalWrite(BUZZER_PIN, HIGH);
   digitalWrite(MOTOR_PIN, HIGH);
+
+  // FLASH Config
+  pinMode(FLASH_PIN, OUTPUT);
+  digitalWrite(FLASH_PIN, LOW); // flash is active-HIGH, LOW = off
 
   // Camera config
   camera_config_t config;
@@ -109,6 +116,41 @@ void setup()
   }
 
   Serial.println("✅ Ultrasonic + buzzer + motor ready");
+}
+
+// Rough average luminance estimate from an RGB565 framebuffer.
+// Samples every Nth pixel for speed rather than the whole frame.
+int estimateBrightness(camera_fb_t *fb)
+{
+  if (!fb || fb->format != PIXFORMAT_RGB565) return 255; // assume bright if unknown
+
+  uint16_t *pixels = (uint16_t *)fb->buf;
+  size_t pixelCount = fb->len / 2;
+  size_t step = 37; // prime-ish stride, avoids sampling a repeating pattern
+
+  long sum = 0;
+  int samples = 0;
+
+  for (size_t i = 0; i < pixelCount; i += step)
+  {
+    uint16_t p = pixels[i];
+    // RGB565: RRRRR GGGGGG BBBBB
+    uint8_t r = (p >> 11) & 0x1F;
+    uint8_t g = (p >> 5) & 0x3F;
+    uint8_t b = p & 0x1F;
+
+    // Normalize to 0–255 and combine via luma-ish weights
+    uint8_t r8 = (r * 255) / 31;
+    uint8_t g8 = (g * 255) / 63;
+    uint8_t b8 = (b * 255) / 31;
+
+    int luma = (int)(0.299 * r8 + 0.587 * g8 + 0.114 * b8);
+    sum += luma;
+    samples++;
+  }
+
+  if (samples == 0) return 255;
+  return sum / samples;
 }
 
 // ── Ultrasonic distance (cm, 0 = no echo) ──
@@ -212,11 +254,33 @@ void captureAndSend()
     esp_camera_fb_return(fb);
   delay(30);
 
-  // Capture fresh frame
+  // Capture a frame to check ambient brightness
   fb = esp_camera_fb_get();
   if (!fb)
   {
     Serial.println("❌ Capture failed");
+    return;
+  }
+
+  int brightness = estimateBrightness(fb);
+  Serial.printf("💡 Brightness estimate: %d\n", brightness);
+
+  bool usedFlash = false;
+  if (brightness < BRIGHTNESS_THRESHOLD)
+  {
+    Serial.println("🔦 Low light detected — enabling flash");
+    esp_camera_fb_return(fb); // discard the dark frame
+    digitalWrite(FLASH_PIN, HIGH);
+    delay(100); // let the sensor's auto-exposure settle under new light
+
+    fb = esp_camera_fb_get(); // re-capture with flash on
+    usedFlash = true;
+  }
+
+  if (!fb)
+  {
+    Serial.println("❌ Capture failed (post-flash)");
+    digitalWrite(FLASH_PIN, LOW);
     return;
   }
 
@@ -225,6 +289,11 @@ void captureAndSend()
 
   bool ok = frame2jpg(fb, 80, &jpg_buf, &jpg_len);
   esp_camera_fb_return(fb);
+
+  if (usedFlash)
+  {
+    digitalWrite(FLASH_PIN, LOW); // turn flash off promptly, don't drain battery
+  }
 
   if (!ok || jpg_len == 0)
   {
