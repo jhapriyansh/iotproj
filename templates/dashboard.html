@@ -40,7 +40,7 @@
       />
     </div>
     <div class="p-3">
-      <p class="text-sm text-gray-300 line-clamp-2">
+      <p class="text-sm text-gray-300 whitespace-pre-wrap break-words">
         {{ img.description or 'No description' }}
       </p>
       <p class="text-xs text-gray-500 mt-1">
@@ -129,7 +129,7 @@
              class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
       </div>
       <div class="p-3">
-        <p class="text-sm text-gray-300 line-clamp-2 desc-text">${d}</p>
+        <p class="text-sm text-gray-300 whitespace-pre-wrap break-words desc-text">${d}</p>
         <p class="text-xs text-gray-500 mt-1">${time}</p>
       </div>`;
     return card;

@@ -80,7 +80,7 @@ def get_current_user(request: Request):
 # ── Auth routes ──
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html", {})
 
 
 @app.post("/login")
@@ -88,7 +88,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     user = users_col.find_one({"email": email})
     if not user or not verify_password(password, user["password"]):
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Invalid email or password"}
+            request, "login.html", {"error": "Invalid email or password"}
         )
     token = create_token(str(user["_id"]))
     response = RedirectResponse(url="/dashboard", status_code=303)
@@ -98,7 +98,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(request, "register.html", {})
 
 
 @app.post("/register")
@@ -111,7 +111,7 @@ async def register(
 ):
     if users_col.find_one({"email": email}):
         return templates.TemplateResponse(
-            "register.html", {"request": request, "error": "Email already registered"}
+            request, "register.html", {"error": "Email already registered"}
         )
     users_col.insert_one(
         {
@@ -147,7 +147,7 @@ async def dashboard(request: Request):
         return RedirectResponse(url="/login")
     imgs = list(images_col.find().sort("timestamp", -1))
     return templates.TemplateResponse(
-        "dashboard.html", {"request": request, "user": user, "images": imgs}
+        request, "dashboard.html", {"user": user, "images": imgs}
     )
 
 
@@ -158,7 +158,7 @@ async def collisions_page(request: Request):
         return RedirectResponse(url="/login")
     events = list(collisions_col.find().sort("timestamp", -1))
     return templates.TemplateResponse(
-        "collisions.html", {"request": request, "user": user, "collisions": events}
+        request, "collisions.html", {"user": user, "collisions": events}
     )
 
 

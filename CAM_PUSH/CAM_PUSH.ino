@@ -71,7 +71,7 @@ void setup()
 
   config.xclk_freq_hz = 20000000;
 
-  config.pixel_format = PIXFORMAT_JPEG;
+  config.pixel_format = PIXFORMAT_RGB565;
   config.frame_size = FRAMESIZE_VGA;
   config.fb_count = 1;
   config.fb_location = CAMERA_FB_IN_PSRAM;
